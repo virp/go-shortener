@@ -30,10 +30,10 @@ func main() {
 				http.Error(w, "Bad Request", http.StatusBadRequest)
 				return
 			}
-			id := addUrl(string(body))
-			shortUrl := fmt.Sprintf("http://localhost:8080/%s", id)
+			id := addURL(string(body))
+			shortURL := fmt.Sprintf("http://localhost:8080/%s", id)
 			w.WriteHeader(http.StatusCreated)
-			_, _ = w.Write([]byte(shortUrl))
+			_, _ = w.Write([]byte(shortURL))
 		case http.MethodGet:
 			idParam := strings.TrimPrefix(r.URL.Path, "/")
 			id, err := strconv.Atoi(idParam)
@@ -41,7 +41,7 @@ func main() {
 				http.Error(w, "Wrong url ID", http.StatusBadRequest)
 				return
 			}
-			long, err := getUrl(id)
+			long, err := getURL(id)
 			if err != nil {
 				http.NotFound(w, r)
 				return
@@ -58,13 +58,13 @@ func main() {
 	}
 }
 
-func addUrl(long string) string {
-	nextId := len(urls) + 1
-	urls[nextId] = long
-	return strconv.Itoa(nextId)
+func addURL(long string) string {
+	nextID := len(urls) + 1
+	urls[nextID] = long
+	return strconv.Itoa(nextID)
 }
 
-func getUrl(id int) (string, error) {
+func getURL(id int) (string, error) {
 	long, ok := urls[id]
 	if !ok {
 		return "", errors.New("not found")
