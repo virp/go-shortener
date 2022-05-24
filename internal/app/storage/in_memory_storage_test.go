@@ -12,7 +12,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 		name     string
 		storage  *inMemoryStorage
 		url      ShortURL
-		expectId string
+		expectID string
 	}{
 		{
 			name: "add first url",
@@ -20,7 +20,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 				urls: map[string]ShortURL{},
 			},
 			url:      ShortURL{LongURL: "https://example.com/very/long/url/for/shortener"},
-			expectId: "1",
+			expectID: "1",
 		},
 		{
 			name: "add second url",
@@ -34,7 +34,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 				lastID: 1,
 			},
 			url:      ShortURL{LongURL: "https://example.com/very/long/url/for/shortener"},
-			expectId: "2",
+			expectID: "2",
 		},
 		{
 			name: "add url with custom ID",
@@ -45,7 +45,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 				ID:      "custom",
 				LongURL: "https://example.com/very/long/url/for/shortener",
 			},
-			expectId: "custom",
+			expectID: "custom",
 		},
 	}
 
@@ -53,13 +53,13 @@ func TestInMemoryStorage_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			url, err := tt.storage.Create(tt.url)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectId, url.ID)
+			assert.Equal(t, tt.expectID, url.ID)
 			assert.Contains(t, tt.storage.urls, url.ID)
 		})
 	}
 }
 
-func TestInMemoryStorage_GetById(t *testing.T) {
+func TestInMemoryStorage_GetByID(t *testing.T) {
 	tests := []struct {
 		name          string
 		storage       URLStorage
