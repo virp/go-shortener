@@ -126,6 +126,9 @@ func TestHandlers_GetURL(t *testing.T) {
 
 			tt.handlers.GetURL(w, req)
 			res := w.Result()
+			defer func() {
+				_ = res.Body.Close()
+			}()
 
 			assert.Equal(t, tt.want.statusCode, res.StatusCode)
 			assert.Equal(t, tt.want.locationHeader, res.Header.Get("Location"))
