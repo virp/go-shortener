@@ -9,7 +9,7 @@ var (
 	ErrAlreadyExist = errors.New("url ID already exist")
 )
 
-type UrlStorage interface {
+type URLStorage interface {
 	Create(ShortURL) (ShortURL, error)
 	GetById(string) (ShortURL, error)
 }

@@ -10,7 +10,7 @@ type inMemoryStorage struct {
 	lastID int32
 }
 
-func NewInMemoryStorage() UrlStorage {
+func NewInMemoryStorage() URLStorage {
 	return &inMemoryStorage{
 		urls:   make(map[string]ShortURL),
 		lastID: 0,

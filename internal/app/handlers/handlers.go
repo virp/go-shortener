@@ -12,7 +12,7 @@ import (
 )
 
 type Handlers struct {
-	Storage  storage.UrlStorage
+	Storage  storage.URLStorage
 	BaseHost string
 }
 
