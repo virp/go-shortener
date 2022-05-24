@@ -73,7 +73,7 @@ func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
 
 func (h Handlers) GetURL(w http.ResponseWriter, r *http.Request) {
 	shortID := strings.TrimPrefix(r.URL.Path, "/")
-	shortURL, err := h.Storage.GetById(shortID)
+	shortURL, err := h.Storage.GetByID(shortID)
 	if err != nil {
 		http.NotFound(w, r)
 		return

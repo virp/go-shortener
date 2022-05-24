@@ -11,5 +11,5 @@ var (
 
 type URLStorage interface {
 	Create(ShortURL) (ShortURL, error)
-	GetById(string) (ShortURL, error)
+	GetByID(string) (ShortURL, error)
 }

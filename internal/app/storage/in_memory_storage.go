@@ -32,7 +32,7 @@ func (s *inMemoryStorage) Create(url ShortURL) (ShortURL, error) {
 	return url, nil
 }
 
-func (s *inMemoryStorage) GetById(id string) (ShortURL, error) {
+func (s *inMemoryStorage) GetByID(id string) (ShortURL, error) {
 	url, ok := s.urls[id]
 	if !ok {
 		return ShortURL{}, ErrNotFound
