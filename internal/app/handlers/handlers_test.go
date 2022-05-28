@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/virp/go-shortener/internal/app/storage"
@@ -91,7 +93,7 @@ func TestHandlers_GetURL(t *testing.T) {
 	tests := []struct {
 		name     string
 		handlers Handlers
-		request  string
+		shortID  string
 		want     want
 	}{
 		{
@@ -102,7 +104,7 @@ func TestHandlers_GetURL(t *testing.T) {
 					LongURL: "https://example.com/very/long/url/for/shortener",
 				},
 			}),
-			request: "https://example.com/1",
+			shortID: "1",
 			want: want{
 				statusCode:     http.StatusTemporaryRedirect,
 				locationHeader: "https://example.com/very/long/url/for/shortener",
@@ -111,7 +113,7 @@ func TestHandlers_GetURL(t *testing.T) {
 		{
 			name:     "should return 404 for non existed url",
 			handlers: getHandlers([]storage.ShortURL{}),
-			request:  "https://example.com/1",
+			shortID:  "1",
 			want: want{
 				statusCode:     http.StatusNotFound,
 				locationHeader: "",
@@ -121,7 +123,10 @@ func TestHandlers_GetURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.request, nil)
+			req := httptest.NewRequest(http.MethodGet, "https://example.com/"+tt.shortID, nil)
+			rCtx := chi.NewRouteContext()
+			rCtx.URLParams.Add("id", tt.shortID)
+			req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rCtx))
 			w := httptest.NewRecorder()
 
 			tt.handlers.GetURL(w, req)

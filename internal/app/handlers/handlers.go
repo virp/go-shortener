@@ -5,9 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/virp/go-shortener/internal/app/storage"
 )
 
@@ -16,28 +15,12 @@ type Handlers struct {
 	BaseHost string
 }
 
-func NewRouter(h Handlers) http.Handler {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.URL.Path == "/" {
-			h.StoreURL(w, r)
-			return
-		}
+func NewRouter(h Handlers) *chi.Mux {
+	r := chi.NewRouter()
+	r.Post("/", h.StoreURL)
+	r.Get("/{id}", h.GetURL)
 
-		if r.Method == http.MethodGet {
-			_, err := strconv.Atoi(r.URL.Path[1:])
-			if err != nil {
-				http.NotFound(w, r)
-				return
-			}
-			h.GetURL(w, r)
-			return
-		}
-
-		http.NotFound(w, r)
-	})
-
-	return mux
+	return r
 }
 
 func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +55,7 @@ func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handlers) GetURL(w http.ResponseWriter, r *http.Request) {
-	shortID := strings.TrimPrefix(r.URL.Path, "/")
+	shortID := chi.URLParam(r, "id")
 	shortURL, err := h.Storage.GetByID(shortID)
 	if err != nil {
 		http.NotFound(w, r)
