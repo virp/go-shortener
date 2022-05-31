@@ -10,13 +10,13 @@ import (
 func TestInMemoryStorage_Create(t *testing.T) {
 	tests := []struct {
 		name     string
-		storage  *inMemoryStorage
+		storage  *memory
 		url      ShortURL
 		expectID string
 	}{
 		{
 			name: "add first url",
-			storage: &inMemoryStorage{
+			storage: &memory{
 				urls: map[string]ShortURL{},
 			},
 			url:      ShortURL{LongURL: "https://example.com/very/long/url/for/shortener"},
@@ -24,7 +24,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 		},
 		{
 			name: "add second url",
-			storage: &inMemoryStorage{
+			storage: &memory{
 				urls: map[string]ShortURL{
 					"1": {
 						ID:      "1",
@@ -38,7 +38,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 		},
 		{
 			name: "add url with custom ID",
-			storage: &inMemoryStorage{
+			storage: &memory{
 				urls: map[string]ShortURL{},
 			},
 			url: ShortURL{
@@ -69,7 +69,7 @@ func TestInMemoryStorage_GetByID(t *testing.T) {
 	}{
 		{
 			name: "get existed url",
-			storage: &inMemoryStorage{
+			storage: &memory{
 				urls: map[string]ShortURL{
 					"1": {
 						ID:      "1",
@@ -83,7 +83,7 @@ func TestInMemoryStorage_GetByID(t *testing.T) {
 		},
 		{
 			name: "get non existed url",
-			storage: &inMemoryStorage{
+			storage: &memory{
 				urls: map[string]ShortURL{},
 			},
 			ID:            "42",

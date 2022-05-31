@@ -2,25 +2,29 @@ package storage
 
 import (
 	"strconv"
-	"sync/atomic"
+	"sync"
 )
 
-type inMemoryStorage struct {
+type memory struct {
 	urls   map[string]ShortURL
-	lastID int32
+	lastID int
+	mu     sync.Mutex
 }
 
-func NewInMemoryStorage() URLStorage {
-	return &inMemoryStorage{
+func NewMemoryStorage() URLStorage {
+	return &memory{
 		urls:   make(map[string]ShortURL),
 		lastID: 0,
 	}
 }
 
-func (s *inMemoryStorage) Create(url ShortURL) (ShortURL, error) {
-	newID := atomic.AddInt32(&s.lastID, 1)
+func (s *memory) Create(url ShortURL) (ShortURL, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.lastID = s.lastID + 1
 	if url.ID == "" {
-		url.ID = strconv.Itoa(int(newID))
+		url.ID = strconv.Itoa(s.lastID)
 	}
 
 	if _, ok := s.urls[url.ID]; ok {
@@ -32,7 +36,7 @@ func (s *inMemoryStorage) Create(url ShortURL) (ShortURL, error) {
 	return url, nil
 }
 
-func (s *inMemoryStorage) GetByID(id string) (ShortURL, error) {
+func (s *memory) GetByID(id string) (ShortURL, error) {
 	url, ok := s.urls[id]
 	if !ok {
 		return ShortURL{}, ErrNotFound

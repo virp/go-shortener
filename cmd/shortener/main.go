@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	s := storage.NewInMemoryStorage()
+	s := storage.NewMemoryStorage()
 	h := handlers.Handlers{
 		Storage:  s,
 		BaseHost: "http://localhost:8080",

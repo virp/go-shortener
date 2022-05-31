@@ -141,7 +141,7 @@ func TestHandlers_GetURL(t *testing.T) {
 }
 
 func getHandlers(urls []storage.ShortURL) Handlers {
-	s := storage.NewInMemoryStorage()
+	s := storage.NewMemoryStorage()
 
 	for _, url := range urls {
 		_, _ = s.Create(storage.ShortURL{ID: url.ID, LongURL: url.LongURL})
