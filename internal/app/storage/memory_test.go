@@ -1,13 +1,14 @@
 package storage
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestInMemoryStorage_Create(t *testing.T) {
+func TestMemoryStorage_Create(t *testing.T) {
 	tests := []struct {
 		name     string
 		storage  *memory
@@ -18,6 +19,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 			name: "add first url",
 			storage: &memory{
 				urls: map[string]ShortURL{},
+				mu:   new(sync.RWMutex),
 			},
 			url:      ShortURL{LongURL: "https://example.com/very/long/url/for/shortener"},
 			expectID: "1",
@@ -32,6 +34,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 					},
 				},
 				lastID: 1,
+				mu:     new(sync.RWMutex),
 			},
 			url:      ShortURL{LongURL: "https://example.com/very/long/url/for/shortener"},
 			expectID: "2",
@@ -40,6 +43,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 			name: "add url with custom ID",
 			storage: &memory{
 				urls: map[string]ShortURL{},
+				mu:   new(sync.RWMutex),
 			},
 			url: ShortURL{
 				ID:      "custom",
@@ -59,7 +63,7 @@ func TestInMemoryStorage_Create(t *testing.T) {
 	}
 }
 
-func TestInMemoryStorage_GetByID(t *testing.T) {
+func TestMemoryStorage_GetByID(t *testing.T) {
 	tests := []struct {
 		name          string
 		storage       URLStorage
@@ -76,6 +80,7 @@ func TestInMemoryStorage_GetByID(t *testing.T) {
 						LongURL: "https://example.com/existed/long/url",
 					},
 				},
+				mu: new(sync.RWMutex),
 			},
 			ID:            "1",
 			expectedURL:   "https://example.com/existed/long/url",
@@ -85,6 +90,7 @@ func TestInMemoryStorage_GetByID(t *testing.T) {
 			name: "get non existed url",
 			storage: &memory{
 				urls: map[string]ShortURL{},
+				mu:   new(sync.RWMutex),
 			},
 			ID:            "42",
 			expectedURL:   "",
