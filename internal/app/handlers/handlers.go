@@ -17,7 +17,7 @@ type Handlers struct {
 }
 
 type apiStoreRequest struct {
-	Url string `json:"url"`
+	URL string `json:"url"`
 }
 
 type apiStoreResponse struct {
@@ -94,7 +94,7 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := url.ParseRequestURI(reqData.Url)
+	u, err := url.ParseRequestURI(reqData.URL)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return

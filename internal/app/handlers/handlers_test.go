@@ -190,7 +190,7 @@ func TestHandlers_APIStoreURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			reqData := apiStoreRequest{Url: tt.longURL}
+			reqData := apiStoreRequest{URL: tt.longURL}
 			reqBody, err := json.Marshal(reqData)
 			require.NoError(t, err)
 			buf := bytes.NewBuffer(reqBody)
