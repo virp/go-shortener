@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,10 +16,20 @@ type Handlers struct {
 	BaseHost string
 }
 
+type apiStoreRequest struct {
+	Url string `json:"url"`
+}
+
+type apiStoreResponse struct {
+	Result string `json:"result"`
+}
+
 func NewRouter(h Handlers) *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/", h.StoreURL)
 	r.Get("/{id}", h.GetURL)
+
+	r.Post("/api/shorten", h.APIStoreURL)
 
 	return r
 }
@@ -64,4 +75,53 @@ func (h Handlers) GetURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Location", shortURL.LongURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	defer func() {
+		_ = r.Body.Close()
+	}()
+
+	var reqData apiStoreRequest
+	err = json.Unmarshal(body, &reqData)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	u, err := url.ParseRequestURI(reqData.Url)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	shortURL := storage.ShortURL{
+		LongURL: u.String(),
+	}
+	shortURL, err = h.Storage.Create(shortURL)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	generatedShortURL := fmt.Sprintf("%s/%s", h.BaseHost, shortURL.ID)
+
+	resData := apiStoreResponse{
+		Result: generatedShortURL,
+	}
+
+	resBody, err := json.Marshal(resData)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(resBody)
 }
