@@ -12,8 +12,8 @@ import (
 )
 
 type Handlers struct {
-	Storage  storage.URLStorage
-	BaseHost string
+	Storage storage.URLStorage
+	BaseURL string
 }
 
 type apiStoreRequest struct {
@@ -59,7 +59,7 @@ func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	generatedShortURL := fmt.Sprintf("%s/%s", h.BaseHost, shortURL.ID)
+	generatedShortURL := fmt.Sprintf("%s/%s", h.BaseURL, shortURL.ID)
 
 	w.WriteHeader(http.StatusCreated)
 	_, _ = w.Write([]byte(generatedShortURL))
@@ -109,7 +109,7 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	generatedShortURL := fmt.Sprintf("%s/%s", h.BaseHost, shortURL.ID)
+	generatedShortURL := fmt.Sprintf("%s/%s", h.BaseURL, shortURL.ID)
 
 	resData := apiStoreResponse{
 		Result: generatedShortURL,

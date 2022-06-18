@@ -227,8 +227,8 @@ func getHandlers(urls []storage.ShortURL) Handlers {
 	}
 
 	h := Handlers{
-		Storage:  s,
-		BaseHost: "https://example.com",
+		Storage: s,
+		BaseURL: "https://example.com",
 	}
 
 	return h
