@@ -220,7 +220,10 @@ func TestHandlers_APIStoreURL(t *testing.T) {
 }
 
 func getHandlers(urls []storage.ShortURL) Handlers {
-	s := storage.NewMemoryStorage()
+	s, err := storage.NewMemoryStorage()
+	if err != nil {
+		panic(err)
+	}
 
 	for _, url := range urls {
 		_, _ = s.Create(storage.ShortURL{ID: url.ID, LongURL: url.LongURL})

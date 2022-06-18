@@ -11,12 +11,12 @@ type memory struct {
 	mu     *sync.RWMutex
 }
 
-func NewMemoryStorage() URLStorage {
+func NewMemoryStorage() (URLStorage, error) {
 	return &memory{
 		urls:   make(map[string]ShortURL),
 		lastID: 0,
 		mu:     new(sync.RWMutex),
-	}
+	}, nil
 }
 
 func (s *memory) Create(url ShortURL) (ShortURL, error) {
@@ -38,8 +38,8 @@ func (s *memory) Create(url ShortURL) (ShortURL, error) {
 }
 
 func (s *memory) GetByID(id string) (ShortURL, error) {
-	//s.mu.RLock()
-	//defer s.mu.RUnlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	url, ok := s.urls[id]
 	if !ok {

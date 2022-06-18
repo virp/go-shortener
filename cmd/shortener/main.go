@@ -20,7 +20,11 @@ func main() {
 		baseURL = "http://localhost:8080"
 	}
 
-	s := storage.NewMemoryStorage()
+	s, err := getStorage()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	h := handlers.Handlers{
 		Storage: s,
 		BaseURL: baseURL,
@@ -28,4 +32,13 @@ func main() {
 	r := handlers.NewRouter(h)
 
 	log.Fatal(http.ListenAndServe(serverAddress, r))
+}
+
+func getStorage() (storage.URLStorage, error) {
+	fileStoragePath, ok := os.LookupEnv("FILE_STORAGE_PATH")
+	if ok {
+		return storage.NewFileStorage(fileStoragePath)
+	} else {
+		return storage.NewMemoryStorage()
+	}
 }
