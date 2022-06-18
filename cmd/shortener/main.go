@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -9,16 +10,30 @@ import (
 	"github.com/virp/go-shortener/internal/app/storage"
 )
 
-func main() {
-	serverAddress, ok := os.LookupEnv("SERVER_ADDRESS")
-	if !ok {
-		serverAddress = ":8080"
-	}
+var (
+	serverAddress   *string
+	baseURL         *string
+	fileStoragePath *string
+)
 
-	baseURL, ok := os.LookupEnv("BASE_URL")
+func init() {
+	sa, ok := os.LookupEnv("SERVER_ADDRESS")
 	if !ok {
-		baseURL = "http://localhost:8080"
+		sa = ":8080"
 	}
+	serverAddress = flag.String("a", sa, "Server Address")
+
+	bu, ok := os.LookupEnv("BASE_URL")
+	if !ok {
+		bu = "http://localhost:8080"
+	}
+	baseURL = flag.String("b", bu, "Base URL")
+
+	fileStoragePath = flag.String("f", os.Getenv("FILE_STORAGE_PATH"), "File Storage Path")
+}
+
+func main() {
+	flag.Parse()
 
 	s, err := getStorage()
 	if err != nil {
@@ -27,17 +42,16 @@ func main() {
 
 	h := handlers.Handlers{
 		Storage: s,
-		BaseURL: baseURL,
+		BaseURL: *baseURL,
 	}
 	r := handlers.NewRouter(h)
 
-	log.Fatal(http.ListenAndServe(serverAddress, r))
+	log.Fatal(http.ListenAndServe(*serverAddress, r))
 }
 
 func getStorage() (storage.URLStorage, error) {
-	fileStoragePath, ok := os.LookupEnv("FILE_STORAGE_PATH")
-	if ok {
-		return storage.NewFileStorage(fileStoragePath)
+	if *fileStoragePath != "" {
+		return storage.NewFileStorage(*fileStoragePath)
 	} else {
 		return storage.NewMemoryStorage()
 	}
