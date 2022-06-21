@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMemoryStorage_Create(t *testing.T) {
+func TestMemory_Create(t *testing.T) {
 	tests := []struct {
 		name     string
 		storage  *memory
@@ -63,7 +63,7 @@ func TestMemoryStorage_Create(t *testing.T) {
 	}
 }
 
-func TestMemoryStorage_GetByID(t *testing.T) {
+func TestMemory_GetByID(t *testing.T) {
 	tests := []struct {
 		name          string
 		storage       URLStorage

@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -140,16 +141,97 @@ func TestHandlers_GetURL(t *testing.T) {
 	}
 }
 
+func TestHandlers_APIStoreURL(t *testing.T) {
+	type want struct {
+		statusCode  int
+		response    string
+		shortID     string
+		contentType string
+	}
+
+	tests := []struct {
+		name     string
+		handlers Handlers
+		longURL  string
+		want     want
+	}{
+		{
+			name:     "should return short link",
+			handlers: getHandlers([]storage.ShortURL{}),
+			longURL:  "https://example.com/very/long/url/for/shortener",
+			want: want{
+				statusCode:  http.StatusCreated,
+				response:    `{"result":"https://example.com/1"}`,
+				shortID:     "1",
+				contentType: "application/json",
+			},
+		},
+		{
+			name:     "should return bad request without provided url",
+			handlers: getHandlers([]storage.ShortURL{}),
+			longURL:  "",
+			want: want{
+				statusCode:  http.StatusBadRequest,
+				response:    http.StatusText(http.StatusBadRequest),
+				contentType: "text/plain; charset=utf-8",
+			},
+		},
+		{
+			name:     "should return bad request with not valid url",
+			handlers: getHandlers([]storage.ShortURL{}),
+			longURL:  "not a url",
+			want: want{
+				statusCode:  http.StatusBadRequest,
+				response:    http.StatusText(http.StatusBadRequest),
+				contentType: "text/plain; charset=utf-8",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reqData := apiStoreRequest{URL: tt.longURL}
+			reqBody, err := json.Marshal(reqData)
+			require.NoError(t, err)
+			buf := bytes.NewBuffer(reqBody)
+			req := httptest.NewRequest(http.MethodPost, "https://example.com", buf)
+			w := httptest.NewRecorder()
+
+			tt.handlers.APIStoreURL(w, req)
+			res := w.Result()
+
+			resBody, err := ioutil.ReadAll(res.Body)
+			require.NoError(t, err)
+			err = res.Body.Close()
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.want.statusCode, res.StatusCode)
+			assert.Equal(t, tt.want.response, strings.TrimRight(string(resBody), "\n"))
+
+			if tt.want.shortID != "" {
+				shortURL, err := tt.handlers.Storage.GetByID(tt.want.shortID)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.longURL, shortURL.LongURL)
+			}
+
+			assert.Equal(t, tt.want.contentType, res.Header.Get("Content-Type"))
+		})
+	}
+}
+
 func getHandlers(urls []storage.ShortURL) Handlers {
-	s := storage.NewMemoryStorage()
+	s, err := storage.NewMemoryStorage()
+	if err != nil {
+		panic(err)
+	}
 
 	for _, url := range urls {
 		_, _ = s.Create(storage.ShortURL{ID: url.ID, LongURL: url.LongURL})
 	}
 
 	h := Handlers{
-		Storage:  s,
-		BaseHost: "https://example.com",
+		Storage: s,
+		BaseURL: "https://example.com",
 	}
 
 	return h
