@@ -77,7 +77,8 @@ func IdentifyUser(secret string) func(next http.Handler) http.Handler {
 			}
 			http.SetCookie(w, c)
 
-			next.ServeHTTP(w, r)
+			ctx := context.WithValue(r.Context(), userKey, user)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
