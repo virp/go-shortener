@@ -64,10 +64,7 @@ func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userID string
-	if ctxValue := r.Context().Value("user"); ctxValue != nil {
-		userID = ctxValue.(string)
-	}
+	userID := getUserIDFromRequest(r)
 
 	shortURL := storage.ShortURL{
 		LongURL: u.String(),
@@ -121,8 +118,11 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID := getUserIDFromRequest(r)
+
 	shortURL := storage.ShortURL{
 		LongURL: u.String(),
+		UserID:  userID,
 	}
 	shortURL, err = h.Storage.Create(shortURL)
 	if err != nil {
@@ -148,10 +148,7 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handlers) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
-	var userID string
-	if ctxValue := r.Context().Value("user"); ctxValue != nil {
-		userID = ctxValue.(string)
-	}
+	userID := getUserIDFromRequest(r)
 	if userID == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNoContent)
@@ -182,4 +179,13 @@ func (h Handlers) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(resBody)
+}
+
+func getUserIDFromRequest(r *http.Request) string {
+	var userID string
+	if ctxValue := r.Context().Value(userKey); ctxValue != nil {
+		userID = ctxValue.(string)
+	}
+
+	return userID
 }

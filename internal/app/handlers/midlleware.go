@@ -33,6 +33,10 @@ func DecompressRequest(next http.Handler) http.Handler {
 	})
 }
 
+type userCtxKey int
+
+const userKey userCtxKey = 1
+
 func IdentifyUser(secret string) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -50,7 +54,7 @@ func IdentifyUser(secret string) func(next http.Handler) http.Handler {
 
 			if c != nil {
 				if user, err := getUser(c.Value, aesGCM); err == nil {
-					ctx := context.WithValue(r.Context(), "user", user)
+					ctx := context.WithValue(r.Context(), userKey, user)
 					next.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
