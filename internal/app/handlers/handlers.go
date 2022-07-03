@@ -2,10 +2,8 @@ package handlers
 
 import (
 	"compress/flate"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -18,6 +16,7 @@ import (
 type Handlers struct {
 	Storage storage.URLStorage
 	BaseURL string
+	Secret  string
 }
 
 type apiStoreRequest struct {
@@ -28,31 +27,23 @@ type apiStoreResponse struct {
 	Result string `json:"result"`
 }
 
+type apiUserURL struct {
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
+}
+
 func NewRouter(h Handlers) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Compress(flate.BestCompression, "text/plain", "application/json"))
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.Header.Get("Content-Encoding") != "gzip" {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			gz, err := gzip.NewReader(r.Body)
-			if err != nil {
-				_, _ = io.WriteString(w, err.Error())
-				return
-			}
-			r.Body = gz
-			next.ServeHTTP(w, r)
-		})
-	})
+	r.Use(DecompressRequest)
+	r.Use(IdentifyUser(h.Secret))
 
 	r.Post("/", h.StoreURL)
 	r.Get("/{id}", h.GetURL)
 
 	r.Post("/api/shorten", h.APIStoreURL)
+	r.Get("/api/user/urls", h.APIGetUserURLs)
 
 	return r
 }
@@ -73,8 +64,14 @@ func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var userID string
+	if ctxValue := r.Context().Value("user"); ctxValue != nil {
+		userID = ctxValue.(string)
+	}
+
 	shortURL := storage.ShortURL{
 		LongURL: u.String(),
+		UserID:  userID,
 	}
 	shortURL, err = h.Storage.Create(shortURL)
 	if err != nil {
@@ -147,5 +144,42 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(resBody)
+}
+
+func (h Handlers) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
+	var userID string
+	if ctxValue := r.Context().Value("user"); ctxValue != nil {
+		userID = ctxValue.(string)
+	}
+	if userID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	urls := h.Storage.FindByUserID(userID)
+	if len(urls) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	response := make([]apiUserURL, len(urls))
+	for i, shortURL := range urls {
+		apiURL := apiUserURL{
+			ShortURL:    fmt.Sprintf("%s/%s", h.BaseURL, shortURL.ID),
+			OriginalURL: shortURL.LongURL,
+		}
+		response[i] = apiURL
+	}
+
+	resBody, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(resBody)
 }

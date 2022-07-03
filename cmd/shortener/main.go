@@ -32,6 +32,7 @@ func main() {
 	h := handlers.Handlers{
 		Storage: s,
 		BaseURL: cfg.baseURL,
+		Secret:  "secretappkey",
 	}
 	r := handlers.NewRouter(h)
 

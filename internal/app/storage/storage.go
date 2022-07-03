@@ -12,4 +12,5 @@ var (
 type URLStorage interface {
 	Create(ShortURL) (ShortURL, error)
 	GetByID(string) (ShortURL, error)
+	FindByUserID(string) []ShortURL
 }

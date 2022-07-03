@@ -95,3 +95,18 @@ func (s *file) GetByID(id string) (ShortURL, error) {
 
 	return url, nil
 }
+
+func (s *file) FindByUserID(userID string) []ShortURL {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var urls []ShortURL
+
+	for _, url := range s.urls {
+		if url.UserID == userID {
+			urls = append(urls, url)
+		}
+	}
+
+	return urls
+}
