@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"compress/flate"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,6 +18,7 @@ type Handlers struct {
 	Storage storage.URLStorage
 	BaseURL string
 	Secret  string
+	DB      *sql.DB
 }
 
 type apiStoreRequest struct {
@@ -44,6 +46,8 @@ func NewRouter(h Handlers) *chi.Mux {
 
 	r.Post("/api/shorten", h.APIStoreURL)
 	r.Get("/api/user/urls", h.APIGetUserURLs)
+
+	r.Get("/ping", h.CheckDB)
 
 	return r
 }
@@ -179,6 +183,14 @@ func (h Handlers) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(resBody)
+}
+
+func (h Handlers) CheckDB(w http.ResponseWriter, r *http.Request) {
+	if err := h.DB.PingContext(r.Context()); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func getUserIDFromRequest(r *http.Request) string {

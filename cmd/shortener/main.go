@@ -1,21 +1,23 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"flag"
 	"log"
 	"net/http"
 	"os"
 
+	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/virp/go-shortener/internal/app/handlers"
 	"github.com/virp/go-shortener/internal/app/storage"
 )
 
 type config struct {
-	serverAddress        string
-	baseURL              string
-	fileStoragePath      string
-	isFileStoragePathSet bool
+	serverAddress   string
+	baseURL         string
+	fileStoragePath string
+	databaseDSN     string
 }
 
 func main() {
@@ -29,10 +31,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	db, err := sql.Open("pgx", cfg.databaseDSN)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() { _ = db.Close() }()
+
 	h := handlers.Handlers{
 		Storage: s,
 		BaseURL: cfg.baseURL,
 		Secret:  "secretappkey",
+		DB:      db,
 	}
 	r := handlers.NewRouter(h)
 
@@ -53,6 +62,7 @@ func getConfig() (config, error) {
 		serverAddress:   ":8080",
 		baseURL:         "http://localhost:8080",
 		fileStoragePath: "",
+		databaseDSN:     "",
 	}
 
 	// Override config by flags
@@ -76,11 +86,13 @@ func getFlagConfig(cfg config) config {
 	sa := flag.String("a", cfg.serverAddress, "Server Address")
 	bu := flag.String("b", cfg.baseURL, "Base URL")
 	fsp := flag.String("f", cfg.fileStoragePath, "File Storage Path")
+	dsn := flag.String("d", cfg.databaseDSN, "Database DSN")
 	flag.Parse()
 
 	cfg.serverAddress = *sa
 	cfg.baseURL = *bu
 	cfg.fileStoragePath = *fsp
+	cfg.databaseDSN = *dsn
 
 	return cfg
 }
@@ -94,6 +106,9 @@ func getEnvConfig(cfg config) config {
 	}
 	if fsp, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
 		cfg.fileStoragePath = fsp
+	}
+	if dsn, ok := os.LookupEnv("DATABASE_DSN"); ok {
+		cfg.databaseDSN = dsn
 	}
 
 	return cfg
