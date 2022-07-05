@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 )
@@ -62,4 +63,17 @@ func (s *memory) FindByUserID(userID string) []ShortURL {
 	}
 
 	return urls
+}
+
+func (s *memory) CreateBatch(urls []ShortURL) ([]ShortURL, error) {
+	createdUrls := make([]ShortURL, 0, len(urls))
+	for _, u := range urls {
+		cu, err := s.Create(u)
+		if err != nil {
+			return nil, fmt.Errorf("create url: %w", err)
+		}
+		createdUrls = append(createdUrls, cu)
+	}
+
+	return createdUrls, nil
 }

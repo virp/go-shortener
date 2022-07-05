@@ -1,7 +1,8 @@
 package storage
 
 type ShortURL struct {
-	ID      string
-	LongURL string
-	UserID  string
+	ID            string
+	LongURL       string
+	UserID        string
+	CorrelationID string
 }

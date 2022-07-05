@@ -29,6 +29,16 @@ type apiStoreResponse struct {
 	Result string `json:"result"`
 }
 
+type apiStoreBatchRequest struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+type apiStoreBatchResponse struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
+}
+
 type apiUserURL struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
@@ -45,6 +55,7 @@ func NewRouter(h Handlers) *chi.Mux {
 	r.Get("/{id}", h.GetURL)
 
 	r.Post("/api/shorten", h.APIStoreURL)
+	r.Post("/api/shorten/batch", h.APIStoreURLBatch)
 	r.Get("/api/user/urls", h.APIGetUserURLs)
 
 	r.Get("/ping", h.CheckDB)
@@ -138,6 +149,64 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 
 	resData := apiStoreResponse{
 		Result: generatedShortURL,
+	}
+
+	resBody, err := json.Marshal(resData)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write(resBody)
+}
+
+func (h Handlers) APIStoreURLBatch(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	defer func() { _ = r.Body.Close() }()
+
+	var reqData []apiStoreBatchRequest
+	err = json.Unmarshal(body, &reqData)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	userID := getUserIDFromRequest(r)
+
+	var urls []storage.ShortURL
+	for _, rd := range reqData {
+		u, err := url.ParseRequestURI(rd.OriginalURL)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+		urlShort := storage.ShortURL{
+			LongURL:       u.String(),
+			CorrelationID: rd.CorrelationID,
+			UserID:        userID,
+		}
+		urls = append(urls, urlShort)
+	}
+
+	urls, err = h.Storage.CreateBatch(urls)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	var resData []apiStoreBatchResponse
+	for _, urlShort := range urls {
+		rd := apiStoreBatchResponse{
+			CorrelationID: urlShort.CorrelationID,
+			ShortURL:      fmt.Sprintf("%s/%s", h.BaseURL, urlShort.ID),
+		}
+		resData = append(resData, rd)
 	}
 
 	resBody, err := json.Marshal(resData)

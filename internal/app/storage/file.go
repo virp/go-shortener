@@ -3,6 +3,7 @@ package storage
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -109,4 +110,17 @@ func (s *file) FindByUserID(userID string) []ShortURL {
 	}
 
 	return urls
+}
+
+func (s *file) CreateBatch(urls []ShortURL) ([]ShortURL, error) {
+	createdUrls := make([]ShortURL, 0, len(urls))
+	for _, u := range urls {
+		cu, err := s.Create(u)
+		if err != nil {
+			return nil, fmt.Errorf("create url: %w", err)
+		}
+		createdUrls = append(createdUrls, cu)
+	}
+
+	return createdUrls, nil
 }
