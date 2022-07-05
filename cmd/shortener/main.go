@@ -135,7 +135,7 @@ func getEnvConfig(cfg config) config {
 const createUrlsTableQuery = `create table if not exists urls
 (
     id             serial primary key,
-    url            text not null,
+    url            text not null unique,
     user_id        uuid default null,
     correlation_id text default null
 )`

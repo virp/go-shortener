@@ -6,7 +6,7 @@ import (
 
 var (
 	ErrNotFound     = errors.New("not found")
-	ErrAlreadyExist = errors.New("url ID already exist")
+	ErrAlreadyExist = errors.New("url already exist")
 )
 
 type URLStorage interface {

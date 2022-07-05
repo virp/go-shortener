@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -23,12 +24,24 @@ func (s *postgres) Create(url ShortURL) (ShortURL, error) {
 
 	err := s.db.QueryRowContext(
 		ctx,
-		"insert into urls (url, user_id, correlation_id) values ($1, $2, $3) returning id",
+		"insert into urls (url, user_id, correlation_id) values ($1, $2, $3) on conflict on constraint urls_url_key do nothing returning id",
 		url.LongURL,
 		url.UserID,
 		url.CorrelationID,
 	).Scan(&url.ID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			row := s.db.QueryRowContext(
+				ctx,
+				"select id, url, user_id, correlation_id from urls where url = $1 limit 1",
+				url.LongURL,
+			)
+			err = row.Scan(&url.ID, &url.LongURL, &url.UserID, &url.CorrelationID)
+			if err != nil {
+				return ShortURL{}, fmt.Errorf("select existed url from db: %w", err)
+			}
+			return url, ErrAlreadyExist
+		}
 		return ShortURL{}, fmt.Errorf("insert url to DB: %w", err)
 	}
 

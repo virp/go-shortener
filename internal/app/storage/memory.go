@@ -29,8 +29,8 @@ func (s *memory) Create(url ShortURL) (ShortURL, error) {
 		url.ID = strconv.Itoa(s.lastID)
 	}
 
-	if _, ok := s.urls[url.ID]; ok {
-		return ShortURL{}, ErrAlreadyExist
+	if u, ok := s.urls[url.ID]; ok {
+		return u, ErrAlreadyExist
 	}
 
 	s.urls[url.ID] = url

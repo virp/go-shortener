@@ -4,6 +4,7 @@ import (
 	"compress/flate"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -85,16 +86,21 @@ func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
 		LongURL: u.String(),
 		UserID:  userID,
 	}
+	statusCode := http.StatusCreated
 	shortURL, err = h.Storage.Create(shortURL)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
+		if errors.Is(err, storage.ErrAlreadyExist) {
+			statusCode = http.StatusConflict
+		} else {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	generatedShortURL := fmt.Sprintf("%s/%s", h.BaseURL, shortURL.ID)
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(statusCode)
 	_, _ = w.Write([]byte(generatedShortURL))
 }
 
@@ -139,10 +145,15 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 		LongURL: u.String(),
 		UserID:  userID,
 	}
+	statusCode := http.StatusCreated
 	shortURL, err = h.Storage.Create(shortURL)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
+		if errors.Is(err, storage.ErrAlreadyExist) {
+			statusCode = http.StatusConflict
+		} else {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	generatedShortURL := fmt.Sprintf("%s/%s", h.BaseURL, shortURL.ID)
@@ -158,7 +169,7 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(statusCode)
 	_, _ = w.Write(resBody)
 }
 
