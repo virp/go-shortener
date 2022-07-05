@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/virp/go-shortener/internal/app/handlers"
@@ -26,16 +29,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	s, err := getStorage(cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	db, err := sql.Open("pgx", cfg.databaseDSN)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
+
+	if err = checkDBTables(db); err != nil {
+		log.Fatal(err)
+	}
+
+	s, err := getStorage(cfg, db)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	h := handlers.Handlers{
 		Storage: s,
@@ -48,12 +55,14 @@ func main() {
 	log.Fatal(http.ListenAndServe(cfg.serverAddress, r))
 }
 
-func getStorage(cfg config) (storage.URLStorage, error) {
+func getStorage(cfg config, db *sql.DB) (storage.URLStorage, error) {
+	if cfg.databaseDSN != "" {
+		return storage.NewPostgresStorage(db)
+	}
 	if cfg.fileStoragePath != "" {
 		return storage.NewFileStorage(cfg.fileStoragePath)
-	} else {
-		return storage.NewMemoryStorage()
 	}
+	return storage.NewMemoryStorage()
 }
 
 func getConfig() (config, error) {
@@ -112,4 +121,26 @@ func getEnvConfig(cfg config) config {
 	}
 
 	return cfg
+}
+
+const createUrlsTableQuery = `create table if not exists urls
+(
+    id      serial primary key,
+    url     text not null,
+    user_id uuid default null
+)`
+
+func checkDBTables(db *sql.DB) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := db.ExecContext(
+		ctx,
+		createUrlsTableQuery,
+	)
+	if err != nil {
+		return fmt.Errorf("creating urls table: %w", err)
+	}
+
+	return nil
 }
