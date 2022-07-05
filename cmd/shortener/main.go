@@ -29,17 +29,23 @@ func main() {
 		log.Fatal(err)
 	}
 
-	db, err := sql.Open("pgx", cfg.databaseDSN)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() { _ = db.Close() }()
+	var database *sql.DB
 
-	if err = checkDBTables(db); err != nil {
-		log.Fatal(err)
+	if cfg.databaseDSN != "" {
+		db, err := sql.Open("pgx", cfg.databaseDSN)
+		if err != nil {
+			log.Fatal(err)
+		}
+		database = db
 	}
 
-	s, err := getStorage(cfg, db)
+	defer func() {
+		if database != nil {
+			_ = database.Close()
+		}
+	}()
+
+	s, err := getStorage(cfg, database)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -48,7 +54,7 @@ func main() {
 		Storage: s,
 		BaseURL: cfg.baseURL,
 		Secret:  "secretappkey",
-		DB:      db,
+		DB:      database,
 	}
 	r := handlers.NewRouter(h)
 
@@ -57,6 +63,9 @@ func main() {
 
 func getStorage(cfg config, db *sql.DB) (storage.URLStorage, error) {
 	if cfg.databaseDSN != "" {
+		if err := checkDBTables(db); err != nil {
+			return nil, fmt.Errorf("check db tables: %w", err)
+		}
 		return storage.NewPostgresStorage(db)
 	}
 	if cfg.fileStoragePath != "" {
