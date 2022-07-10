@@ -23,7 +23,7 @@ func NewPostgresStorage(db *sqlx.DB, timeout time.Duration) (URLStorage, error) 
 }
 
 func (s *postgres) Create(ctx context.Context, url ShortURL) (ShortURL, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	rows, err := s.db.NamedQueryContext(
@@ -56,7 +56,7 @@ func (s *postgres) Create(ctx context.Context, url ShortURL) (ShortURL, error) {
 }
 
 func (s *postgres) GetByID(ctx context.Context, id string) (ShortURL, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	var url ShortURL
