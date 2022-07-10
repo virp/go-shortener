@@ -6,94 +6,83 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type postgres struct {
-	db *sql.DB
+	db      *sqlx.DB
+	timeout time.Duration
 }
 
-func NewPostgresStorage(db *sql.DB) (URLStorage, error) {
+func NewPostgresStorage(db *sqlx.DB, timeout time.Duration) (URLStorage, error) {
 	return &postgres{
-		db: db,
+		db:      db,
+		timeout: timeout,
 	}, nil
 }
 
-func (s *postgres) Create(url ShortURL) (ShortURL, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+func (s *postgres) Create(ctx context.Context, url ShortURL) (ShortURL, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
-	err := s.db.QueryRowContext(
+	rows, err := s.db.NamedQueryContext(
 		ctx,
-		"insert into urls (url, user_id, correlation_id) values ($1, $2, $3) on conflict on constraint urls_url_key do nothing returning id",
-		url.LongURL,
-		url.UserID,
-		url.CorrelationID,
-	).Scan(&url.ID)
+		"insert into urls (url, user_id, correlation_id) values (:url, :user_id, :correlation_id) on conflict on constraint urls_url_key do nothing returning id",
+		&url,
+	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			row := s.db.QueryRowContext(
-				ctx,
-				"select id, url, user_id, correlation_id from urls where url = $1 limit 1",
-				url.LongURL,
-			)
-			err = row.Scan(&url.ID, &url.LongURL, &url.UserID, &url.CorrelationID)
-			if err != nil {
-				return ShortURL{}, fmt.Errorf("select existed url from db: %w", err)
-			}
-			return url, ErrAlreadyExist
-		}
 		return ShortURL{}, fmt.Errorf("insert url to DB: %w", err)
 	}
+	if rows.Next() {
+		err = rows.Scan(&url.ID)
+		if err != nil {
+			return ShortURL{}, fmt.Errorf("get inserted url id: %w", err)
+		}
+		return url, nil
+	}
 
-	return url, nil
+	err = s.db.GetContext(
+		ctx,
+		&url,
+		"select id, url, user_id, correlation_id from urls where url = $1 limit 1",
+		url.LongURL,
+	)
+	if err != nil {
+		return ShortURL{}, fmt.Errorf("get duplicated url: %w", err)
+	}
+
+	return url, ErrAlreadyExist
 }
 
-func (s *postgres) GetByID(id string) (ShortURL, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+func (s *postgres) GetByID(ctx context.Context, id string) (ShortURL, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
-	r := s.db.QueryRowContext(
-		ctx,
-		"select id, url, user_id, correlation_id from urls where id = $1",
-		id,
-	)
-	if r == nil {
-		return ShortURL{}, ErrNotFound
-	}
 	var url ShortURL
-	if err := r.Scan(&url.ID, &url.LongURL, &url.UserID, &url.CorrelationID); err != nil {
-		return ShortURL{}, fmt.Errorf("scan row: %w", err)
+	err := s.db.GetContext(ctx, &url, "select id, url, user_id, correlation_id from urls where id = $1", id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ShortURL{}, ErrNotFound
+		}
+		return ShortURL{}, fmt.Errorf("get url: %w", err)
 	}
 
 	return url, nil
 }
 
-func (s *postgres) FindByUserID(userID string) []ShortURL {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+func (s *postgres) FindByUserID(ctx context.Context, userID string) []ShortURL {
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	var urls []ShortURL
 
-	rows, err := s.db.QueryContext(
+	err := s.db.SelectContext(
 		ctx,
+		&urls,
 		"select id, url, user_id, correlation_id from urls where user_id = $1",
 		userID,
 	)
-	if err != nil {
-		return nil
-	}
-	defer func() { _ = rows.Close() }()
-
-	for rows.Next() {
-		var url ShortURL
-		err = rows.Scan(&url.ID, &url.LongURL, &url.UserID, &url.CorrelationID)
-		if err != nil {
-			return nil
-		}
-		urls = append(urls, url)
-	}
-
-	err = rows.Err()
 	if err != nil {
 		return nil
 	}
@@ -101,17 +90,17 @@ func (s *postgres) FindByUserID(userID string) []ShortURL {
 	return urls
 }
 
-func (s *postgres) CreateBatch(urls []ShortURL) ([]ShortURL, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+func (s *postgres) CreateBatch(ctx context.Context, urls []ShortURL) ([]ShortURL, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	stmt, err := tx.PrepareContext(
+	stmt, err := tx.PreparexContext(
 		ctx,
 		"insert into urls (url, user_id, correlation_id) values ($1, $2, $3) returning id",
 	)
@@ -122,7 +111,7 @@ func (s *postgres) CreateBatch(urls []ShortURL) ([]ShortURL, error) {
 
 	createdUrls := make([]ShortURL, 0, len(urls))
 	for _, u := range urls {
-		err := stmt.QueryRowContext(
+		err := stmt.QueryRowxContext(
 			ctx,
 			u.LongURL,
 			u.UserID,
@@ -131,7 +120,6 @@ func (s *postgres) CreateBatch(urls []ShortURL) ([]ShortURL, error) {
 		if err != nil {
 			return nil, fmt.Errorf("insert url to DB: %w", err)
 		}
-
 		createdUrls = append(createdUrls, u)
 	}
 

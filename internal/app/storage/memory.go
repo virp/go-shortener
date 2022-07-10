@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
@@ -20,7 +21,7 @@ func NewMemoryStorage() (URLStorage, error) {
 	}, nil
 }
 
-func (s *memory) Create(url ShortURL) (ShortURL, error) {
+func (s *memory) Create(ctx context.Context, url ShortURL) (ShortURL, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -38,7 +39,7 @@ func (s *memory) Create(url ShortURL) (ShortURL, error) {
 	return url, nil
 }
 
-func (s *memory) GetByID(id string) (ShortURL, error) {
+func (s *memory) GetByID(ctx context.Context, id string) (ShortURL, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -50,7 +51,7 @@ func (s *memory) GetByID(id string) (ShortURL, error) {
 	return url, nil
 }
 
-func (s *memory) FindByUserID(userID string) []ShortURL {
+func (s *memory) FindByUserID(ctx context.Context, userID string) []ShortURL {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -65,10 +66,10 @@ func (s *memory) FindByUserID(userID string) []ShortURL {
 	return urls
 }
 
-func (s *memory) CreateBatch(urls []ShortURL) ([]ShortURL, error) {
+func (s *memory) CreateBatch(ctx context.Context, urls []ShortURL) ([]ShortURL, error) {
 	createdUrls := make([]ShortURL, 0, len(urls))
 	for _, u := range urls {
-		cu, err := s.Create(u)
+		cu, err := s.Create(ctx, u)
 		if err != nil {
 			return nil, fmt.Errorf("create url: %w", err)
 		}

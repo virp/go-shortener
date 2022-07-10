@@ -77,7 +77,7 @@ func TestHandlers_StoreURL(t *testing.T) {
 			assert.Equal(t, tt.want.response, strings.TrimRight(string(resBody), "\n"))
 
 			if tt.want.shortID != "" {
-				shortURL, err := tt.handlers.Storage.GetByID(tt.want.shortID)
+				shortURL, err := tt.handlers.Storage.GetByID(context.Background(), tt.want.shortID)
 				assert.NoError(t, err)
 				assert.Equal(t, tt.longURL, shortURL.LongURL)
 			}
@@ -209,7 +209,7 @@ func TestHandlers_APIStoreURL(t *testing.T) {
 			assert.Equal(t, tt.want.response, strings.TrimRight(string(resBody), "\n"))
 
 			if tt.want.shortID != "" {
-				shortURL, err := tt.handlers.Storage.GetByID(tt.want.shortID)
+				shortURL, err := tt.handlers.Storage.GetByID(context.Background(), tt.want.shortID)
 				assert.NoError(t, err)
 				assert.Equal(t, tt.longURL, shortURL.LongURL)
 			}
@@ -226,7 +226,7 @@ func getHandlers(urls []storage.ShortURL) Handlers {
 	}
 
 	for _, url := range urls {
-		_, _ = s.Create(storage.ShortURL{ID: url.ID, LongURL: url.LongURL})
+		_, _ = s.Create(context.Background(), storage.ShortURL{ID: url.ID, LongURL: url.LongURL})
 	}
 
 	h := Handlers{

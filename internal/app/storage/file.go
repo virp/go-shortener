@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -53,7 +54,7 @@ func NewFileStorage(filename string) (URLStorage, error) {
 	}, nil
 }
 
-func (s *file) Create(url ShortURL) (ShortURL, error) {
+func (s *file) Create(ctx context.Context, url ShortURL) (ShortURL, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -85,7 +86,7 @@ func (s *file) Create(url ShortURL) (ShortURL, error) {
 	return url, nil
 }
 
-func (s *file) GetByID(id string) (ShortURL, error) {
+func (s *file) GetByID(ctx context.Context, id string) (ShortURL, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -97,7 +98,7 @@ func (s *file) GetByID(id string) (ShortURL, error) {
 	return url, nil
 }
 
-func (s *file) FindByUserID(userID string) []ShortURL {
+func (s *file) FindByUserID(ctx context.Context, userID string) []ShortURL {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -112,10 +113,10 @@ func (s *file) FindByUserID(userID string) []ShortURL {
 	return urls
 }
 
-func (s *file) CreateBatch(urls []ShortURL) ([]ShortURL, error) {
+func (s *file) CreateBatch(ctx context.Context, urls []ShortURL) ([]ShortURL, error) {
 	createdUrls := make([]ShortURL, 0, len(urls))
 	for _, u := range urls {
-		cu, err := s.Create(u)
+		cu, err := s.Create(ctx, u)
 		if err != nil {
 			return nil, fmt.Errorf("create url: %w", err)
 		}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -12,15 +11,19 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/jmoiron/sqlx"
 	"github.com/virp/go-shortener/internal/app/handlers"
 	"github.com/virp/go-shortener/internal/app/storage"
 )
 
+const defaultDatabaseQueryTimeout = "3s"
+
 type config struct {
-	serverAddress   string
-	baseURL         string
-	fileStoragePath string
-	databaseDSN     string
+	serverAddress        string
+	baseURL              string
+	fileStoragePath      string
+	databaseDSN          string
+	databaseQueryTimeout time.Duration
 }
 
 func main() {
@@ -29,10 +32,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var database *sql.DB
+	var database *sqlx.DB
 
 	if cfg.databaseDSN != "" {
-		db, err := sql.Open("pgx", cfg.databaseDSN)
+		db, err := sqlx.Open("pgx", cfg.databaseDSN)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -61,12 +64,12 @@ func main() {
 	log.Fatal(http.ListenAndServe(cfg.serverAddress, r))
 }
 
-func getStorage(cfg config, db *sql.DB) (storage.URLStorage, error) {
+func getStorage(cfg config, db *sqlx.DB) (storage.URLStorage, error) {
 	if cfg.databaseDSN != "" {
-		if err := checkDBTables(db); err != nil {
+		if err := checkDBTables(db, cfg.databaseQueryTimeout); err != nil {
 			return nil, fmt.Errorf("check db tables: %w", err)
 		}
-		return storage.NewPostgresStorage(db)
+		return storage.NewPostgresStorage(db, cfg.databaseQueryTimeout)
 	}
 	if cfg.fileStoragePath != "" {
 		return storage.NewFileStorage(cfg.fileStoragePath)
@@ -75,12 +78,18 @@ func getStorage(cfg config, db *sql.DB) (storage.URLStorage, error) {
 }
 
 func getConfig() (config, error) {
+	dqt, err := time.ParseDuration(defaultDatabaseQueryTimeout)
+	if err != nil {
+		return config{}, fmt.Errorf("parse database query time duration: %w", err)
+	}
+
 	// Default config
 	cfg := config{
-		serverAddress:   ":8080",
-		baseURL:         "http://localhost:8080",
-		fileStoragePath: "",
-		databaseDSN:     "",
+		serverAddress:        ":8080",
+		baseURL:              "http://localhost:8080",
+		fileStoragePath:      "",
+		databaseDSN:          "",
+		databaseQueryTimeout: dqt,
 	}
 
 	// Override config by flags
@@ -101,16 +110,11 @@ func getConfig() (config, error) {
 }
 
 func getFlagConfig(cfg config) config {
-	sa := flag.String("a", cfg.serverAddress, "Server Address")
-	bu := flag.String("b", cfg.baseURL, "Base URL")
-	fsp := flag.String("f", cfg.fileStoragePath, "File Storage Path")
-	dsn := flag.String("d", cfg.databaseDSN, "Database DSN")
+	flag.StringVar(&cfg.serverAddress, "a", cfg.serverAddress, "Server Address")
+	flag.StringVar(&cfg.baseURL, "b", cfg.baseURL, "Base URL")
+	flag.StringVar(&cfg.fileStoragePath, "f", cfg.fileStoragePath, "File Storage Path")
+	flag.StringVar(&cfg.databaseDSN, "d", cfg.databaseDSN, "Database DSN")
 	flag.Parse()
-
-	cfg.serverAddress = *sa
-	cfg.baseURL = *bu
-	cfg.fileStoragePath = *fsp
-	cfg.databaseDSN = *dsn
 
 	return cfg
 }
@@ -140,8 +144,8 @@ const createUrlsTableQuery = `create table if not exists urls
     correlation_id text default null
 )`
 
-func checkDBTables(db *sql.DB) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+func checkDBTables(db *sqlx.DB, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	_, err := db.ExecContext(

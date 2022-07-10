@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"compress/flate"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jmoiron/sqlx"
 	"github.com/virp/go-shortener/internal/app/storage"
 )
 
@@ -19,7 +19,7 @@ type Handlers struct {
 	Storage storage.URLStorage
 	BaseURL string
 	Secret  string
-	DB      *sql.DB
+	DB      *sqlx.DB
 }
 
 type apiStoreRequest struct {
@@ -87,7 +87,7 @@ func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
 		UserID:  userID,
 	}
 	statusCode := http.StatusCreated
-	shortURL, err = h.Storage.Create(shortURL)
+	shortURL, err = h.Storage.Create(r.Context(), shortURL)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
 			statusCode = http.StatusConflict
@@ -106,7 +106,7 @@ func (h Handlers) StoreURL(w http.ResponseWriter, r *http.Request) {
 
 func (h Handlers) GetURL(w http.ResponseWriter, r *http.Request) {
 	shortID := chi.URLParam(r, "id")
-	shortURL, err := h.Storage.GetByID(shortID)
+	shortURL, err := h.Storage.GetByID(r.Context(), shortID)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -146,7 +146,7 @@ func (h Handlers) APIStoreURL(w http.ResponseWriter, r *http.Request) {
 		UserID:  userID,
 	}
 	statusCode := http.StatusCreated
-	shortURL, err = h.Storage.Create(shortURL)
+	shortURL, err = h.Storage.Create(r.Context(), shortURL)
 	if err != nil {
 		if errors.Is(err, storage.ErrAlreadyExist) {
 			statusCode = http.StatusConflict
@@ -205,7 +205,7 @@ func (h Handlers) APIStoreURLBatch(w http.ResponseWriter, r *http.Request) {
 		urls = append(urls, urlShort)
 	}
 
-	urls, err = h.Storage.CreateBatch(urls)
+	urls, err = h.Storage.CreateBatch(r.Context(), urls)
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
@@ -239,7 +239,7 @@ func (h Handlers) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urls := h.Storage.FindByUserID(userID)
+	urls := h.Storage.FindByUserID(r.Context(), userID)
 	if len(urls) == 0 {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNoContent)

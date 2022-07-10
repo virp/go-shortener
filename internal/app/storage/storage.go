@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 )
 
@@ -10,8 +11,8 @@ var (
 )
 
 type URLStorage interface {
-	Create(ShortURL) (ShortURL, error)
-	GetByID(string) (ShortURL, error)
-	FindByUserID(string) []ShortURL
-	CreateBatch([]ShortURL) ([]ShortURL, error)
+	Create(context.Context, ShortURL) (ShortURL, error)
+	GetByID(context.Context, string) (ShortURL, error)
+	FindByUserID(context.Context, string) []ShortURL
+	CreateBatch(context.Context, []ShortURL) ([]ShortURL, error)
 }
