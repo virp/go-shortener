@@ -31,6 +31,7 @@ func (s *postgres) Create(ctx context.Context, url ShortURL) (ShortURL, error) {
 		"insert into urls (url, user_id, correlation_id) values (:url, :user_id, :correlation_id) on conflict on constraint urls_url_key do nothing returning id",
 		&url,
 	)
+	defer func() { _ = rows.Close() }()
 	if err != nil {
 		return ShortURL{}, fmt.Errorf("insert url to DB: %w", err)
 	}
@@ -40,6 +41,10 @@ func (s *postgres) Create(ctx context.Context, url ShortURL) (ShortURL, error) {
 			return ShortURL{}, fmt.Errorf("get inserted url id: %w", err)
 		}
 		return url, nil
+	}
+
+	if rows.Err() != nil {
+		return ShortURL{}, fmt.Errorf("insert url to DB: %w", err)
 	}
 
 	err = s.db.GetContext(
