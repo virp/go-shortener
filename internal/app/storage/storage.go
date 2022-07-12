@@ -1,15 +1,18 @@
 package storage
 
 import (
+	"context"
 	"errors"
 )
 
 var (
 	ErrNotFound     = errors.New("not found")
-	ErrAlreadyExist = errors.New("url ID already exist")
+	ErrAlreadyExist = errors.New("url already exist")
 )
 
 type URLStorage interface {
-	Create(ShortURL) (ShortURL, error)
-	GetByID(string) (ShortURL, error)
+	Create(context.Context, ShortURL) (ShortURL, error)
+	GetByID(context.Context, string) (ShortURL, error)
+	FindByUserID(context.Context, string) []ShortURL
+	CreateBatch(context.Context, []ShortURL) ([]ShortURL, error)
 }

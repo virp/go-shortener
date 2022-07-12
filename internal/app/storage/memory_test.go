@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -55,7 +56,7 @@ func TestMemory_Create(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url, err := tt.storage.Create(tt.url)
+			url, err := tt.storage.Create(context.Background(), tt.url)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectID, url.ID)
 			assert.Contains(t, tt.storage.urls, url.ID)
@@ -100,7 +101,7 @@ func TestMemory_GetByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url, err := tt.storage.GetByID(tt.ID)
+			url, err := tt.storage.GetByID(context.Background(), tt.ID)
 			if tt.expectedError != nil {
 				assert.ErrorIs(t, err, tt.expectedError)
 				return

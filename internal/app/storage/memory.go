@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"context"
+	"fmt"
 	"strconv"
 	"sync"
 )
@@ -19,7 +21,7 @@ func NewMemoryStorage() (URLStorage, error) {
 	}, nil
 }
 
-func (s *memory) Create(url ShortURL) (ShortURL, error) {
+func (s *memory) Create(ctx context.Context, url ShortURL) (ShortURL, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -28,8 +30,8 @@ func (s *memory) Create(url ShortURL) (ShortURL, error) {
 		url.ID = strconv.Itoa(s.lastID)
 	}
 
-	if _, ok := s.urls[url.ID]; ok {
-		return ShortURL{}, ErrAlreadyExist
+	if u, ok := s.urls[url.ID]; ok {
+		return u, ErrAlreadyExist
 	}
 
 	s.urls[url.ID] = url
@@ -37,7 +39,7 @@ func (s *memory) Create(url ShortURL) (ShortURL, error) {
 	return url, nil
 }
 
-func (s *memory) GetByID(id string) (ShortURL, error) {
+func (s *memory) GetByID(ctx context.Context, id string) (ShortURL, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -47,4 +49,32 @@ func (s *memory) GetByID(id string) (ShortURL, error) {
 	}
 
 	return url, nil
+}
+
+func (s *memory) FindByUserID(ctx context.Context, userID string) []ShortURL {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var urls []ShortURL
+
+	for _, url := range s.urls {
+		if url.UserID == userID {
+			urls = append(urls, url)
+		}
+	}
+
+	return urls
+}
+
+func (s *memory) CreateBatch(ctx context.Context, urls []ShortURL) ([]ShortURL, error) {
+	createdUrls := make([]ShortURL, 0, len(urls))
+	for _, u := range urls {
+		cu, err := s.Create(ctx, u)
+		if err != nil {
+			return nil, fmt.Errorf("create url: %w", err)
+		}
+		createdUrls = append(createdUrls, cu)
+	}
+
+	return createdUrls, nil
 }

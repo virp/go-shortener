@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"testing"
 
@@ -21,13 +22,13 @@ func TestFile_Create(t *testing.T) {
 	require.NoError(t, err)
 
 	longURL := "https://example.com/very/long/url/for/shortener"
-	url, err := s.Create(ShortURL{LongURL: longURL})
+	url, err := s.Create(context.Background(), ShortURL{LongURL: longURL})
 	require.NoError(t, err)
 	assert.Equal(t, "1", url.ID)
 
 	s, err = NewFileStorage(filename)
 	require.NoError(t, err)
-	url, err = s.GetByID("1")
+	url, err = s.GetByID(context.Background(), "1")
 	require.NoError(t, err)
 	assert.Equal(t, longURL, url.LongURL)
 }
@@ -53,7 +54,7 @@ func TestFile_GetByID(t *testing.T) {
 	s, err := NewFileStorage(filename)
 	require.NoError(t, err)
 
-	url, err := s.GetByID("custom")
+	url, err := s.GetByID(context.Background(), "custom")
 	require.NoError(t, err)
 	assert.Equal(t, "https://example.com/very/long/url/for/shortener", url.LongURL)
 }
