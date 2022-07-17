@@ -48,7 +48,10 @@ func main() {
 		}
 	}()
 
-	s, err := getStorage(cfg, database)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	s, err := getStorage(ctx, cfg, database)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,12 +67,12 @@ func main() {
 	log.Fatal(http.ListenAndServe(cfg.serverAddress, r))
 }
 
-func getStorage(cfg config, db *sqlx.DB) (storage.URLStorage, error) {
+func getStorage(ctx context.Context, cfg config, db *sqlx.DB) (storage.URLStorage, error) {
 	if cfg.databaseDSN != "" {
 		if err := checkDBTables(db, cfg.databaseQueryTimeout); err != nil {
 			return nil, fmt.Errorf("check db tables: %w", err)
 		}
-		return storage.NewPostgresStorage(db, cfg.databaseQueryTimeout)
+		return storage.NewPostgresStorage(ctx, db, cfg.databaseQueryTimeout)
 	}
 	if cfg.fileStoragePath != "" {
 		return storage.NewFileStorage(cfg.fileStoragePath)
@@ -141,7 +144,8 @@ const createUrlsTableQuery = `create table if not exists urls
     id             serial primary key,
     url            text not null unique,
     user_id        uuid default null,
-    correlation_id text default null
+    correlation_id text default null,
+    is_deleted     bool default false
 )`
 
 func checkDBTables(db *sqlx.DB, timeout time.Duration) error {

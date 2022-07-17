@@ -58,6 +58,7 @@ func NewRouter(h Handlers) *chi.Mux {
 	r.Post("/api/shorten", h.APIStoreURL)
 	r.Post("/api/shorten/batch", h.APIStoreURLBatch)
 	r.Get("/api/user/urls", h.APIGetUserURLs)
+	r.Delete("/api/user/urls", h.APIDeleteUserURLs)
 
 	r.Get("/ping", h.CheckDB)
 
@@ -109,6 +110,11 @@ func (h Handlers) GetURL(w http.ResponseWriter, r *http.Request) {
 	shortURL, err := h.Storage.GetByID(r.Context(), shortID)
 	if err != nil {
 		http.NotFound(w, r)
+		return
+	}
+
+	if shortURL.IsDeleted {
+		w.WriteHeader(http.StatusGone)
 		return
 	}
 
@@ -263,6 +269,29 @@ func (h Handlers) APIGetUserURLs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(resBody)
+}
+
+func (h Handlers) APIDeleteUserURLs(w http.ResponseWriter, r *http.Request) {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	defer func() { _ = r.Body.Close() }()
+
+	userID := getUserIDFromRequest(r)
+	var ids []string
+	err = json.Unmarshal(body, &ids)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
+	go func() {
+		_ = h.Storage.DeleteBatch(r.Context(), userID, ids)
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (h Handlers) CheckDB(w http.ResponseWriter, r *http.Request) {

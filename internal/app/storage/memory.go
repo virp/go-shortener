@@ -78,3 +78,7 @@ func (s *memory) CreateBatch(ctx context.Context, urls []ShortURL) ([]ShortURL, 
 
 	return createdUrls, nil
 }
+
+func (s *memory) DeleteBatch(ctx context.Context, userID string, ids []string) error {
+	return nil
+}
