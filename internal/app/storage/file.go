@@ -125,3 +125,7 @@ func (s *file) CreateBatch(ctx context.Context, urls []ShortURL) ([]ShortURL, er
 
 	return createdUrls, nil
 }
+
+func (s *file) DeleteBatch(ctx context.Context, userID string, ids []string) error {
+	return nil
+}

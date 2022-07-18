@@ -5,4 +5,5 @@ type ShortURL struct {
 	LongURL       string `db:"url"`
 	UserID        string `db:"user_id"`
 	CorrelationID string `db:"correlation_id"`
+	IsDeleted     bool   `db:"is_deleted"`
 }

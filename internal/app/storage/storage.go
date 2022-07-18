@@ -15,4 +15,5 @@ type URLStorage interface {
 	GetByID(context.Context, string) (ShortURL, error)
 	FindByUserID(context.Context, string) []ShortURL
 	CreateBatch(context.Context, []ShortURL) ([]ShortURL, error)
+	DeleteBatch(context.Context, string, []string) error
 }
